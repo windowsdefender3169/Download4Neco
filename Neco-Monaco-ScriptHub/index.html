@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neco-Monaco</title>
+    <!-- Monaco Editor core files from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            background-color: #121212;
+            color: white;
+            font-family: Arial, sans-serif;
+            overflow: hidden; /* Prevent scrolling */
+        }
+
+        /* Editor Container */
+        #editor {
+            height: 100vh; /* Full viewport height */
+            width: 100vw; /* Full viewport width */
+            position: relative; /* Required for absolute positioning of button */
+        }
+
+        /* ScriptHub Button */
+        #scriptHubButton {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: #005f05;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            z-index: 1001; /* Ensure button is above editor */
+        }
+
+        #scriptHubButton:hover {
+            background-color: #005f05;
+        }
+
+        /* Modal Window */
+        #scriptHubModal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* Ensure modal is above other content */
+        }
+
+        #scriptHubContent {
+            background: #1f1f1f;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 900px;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+
+        #scriptHubContent h2 {
+            margin: 0;
+            color: #009600;
+        }
+
+        #scriptHubContent .close-button {
+            background-color: #FF6347;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        #scriptHubContent .close-button:hover {
+            background-color: #FF4500;
+        }
+
+        /* Search Form */
+        #search-form {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        #search-input, #mode-select {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #333;
+            color: #009600;
+        }
+
+        #search-form button {
+            padding: 10px;
+            background-color: #005f05;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        #search-form button:hover {
+            background-color: #005f05;
+        }
+
+        /* Results */
+        #results {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .script-card {
+            background: #333;
+            padding: 15px;
+            border-radius: 10px;
+            width: calc(33% - 20px);
+            box-sizing: border-box;
+        }
+
+        .script-card img {
+            width: 100%;
+            border-radius: 8px;
+        }
+
+        .script-title {
+            color: #009600;
+            margin: 10px 0;
+			font-size: 14px;
+        }
+
+        .script-title a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .script-details {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .script-text-container {
+            margin-top: 10px;
+        }
+
+        .load-to-editor-button {
+            background-color: #005f05;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .load-to-editor-button:hover {
+            background-color: #1C86EE;
+        }
+
+        /* Load More Button */
+        #load-more {
+            padding: 10px;
+            background-color: #1E90FF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            display: none;
+            margin: 20px auto;
+        }
+
+        #load-more:hover {
+            background-color: #1C86EE;
+        }
+    </style>
+</head>
+<body>
+    <!-- Monaco Editor -->
+    <div id="editor">
+        <button id="scriptHubButton">Open ScriptHub</button>
+    </div>
+
+    <!-- ScriptHub Modal -->
+    <div id="scriptHubModal">
+        <div id="scriptHubContent">
+            <button class="close-button" id="close-scripthub">Close</button>
+            <h2>ScriptHub</h2>
+            <form id="search-form">
+                <input type="text" id="search-input" placeholder="Powered By Scriptblox.com">
+                <select id="mode-select">
+                    <option value="free">Free</option>
+                    <option value="paid">Paid</option>
+                </select>
+                <button type="submit">Search</button>
+            </form>
+            <div id="results"></div>
+            <button id="load-more">Load More</button>
+        </div>
+    </div>
+
+    <script>
+        // Load the Monaco Editor with its dependencies
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }});
+        require(['vs/editor/editor.main'], function () {
+            // Define a custom dark theme
+            monaco.editor.defineTheme('my-dark-theme', {
+                base: 'vs-dark',
+                inherit: true,
+                rules: [
+                    { token: 'local', foreground: '#84D6F7' },
+                    { token: 'string', foreground: '#A6E78F' },
+                    { token: 'number', foreground: '#FCC600' },
+                    { token: 'comment', foreground: '#A6E78F' },
+                    { token: 'keyword', foreground: '#D1606C' },
+                ],
+                colors: {
+                    'editor.background': '#121212',
+                    'editor.foreground': '#FFFFFF',
+                    'editor.lineHighlightBackground': '#333333',
+                    'editorCursor.foreground': '#FFFFFF'
+                }
+            });
+
+            // Register the Lua language with tokenizer rules
+            monaco.languages.register({ id: 'lua' });
+            monaco.languages.setMonarchTokensProvider('lua', {
+                tokenizer: {
+                    root: [
+                        [/\bprint\b/, 'keyword'],
+                        [/\blocal\b/, 'local'],
+                        [/"[^"]*"/, 'string'],
+                        [/'[^']*'/, 'string'],
+                        [/\b\d+(\.\d+)?\b/, 'number'],
+                        [/\b(?:if|then|else|end|for|while|function|return|break)\b/, 'keyword'],
+                        [/\-\-.*/, 'comment'],
+                    ],
+                }
+            });
+
+            // Create the editor instance
+            window.editor = monaco.editor.create(document.getElementById('editor'), {
+                value: 'print("Hello Neco-Ware V2!")',
+                language: 'lua',
+                theme: 'my-dark-theme',
+                
+            });
+        });
+
+		function minimap(bool) {
+    editor.updateOptions({
+        minimap: {
+            enabled: bool
+        }
+    });
+    console.log("Minimap is now", bool ? "enabled" : "disabled");
+}
+
+
+        // Function to get the value from the editor
+        function getEditorValue() {
+            return editor.getValue();
+        }
+
+        // Function to set the value in the editor
+        function setEditorValue(value) {
+            editor.setValue(value);
+        }
+
+        // ScriptHub Modal Functionality
+        const scriptHubButton = document.getElementById('scriptHubButton');
+        const scriptHubModal = document.getElementById('scriptHubModal');
+        const closeButton = document.getElementById('close-scripthub');
+
+        scriptHubButton.addEventListener('click', () => {
+            if (scriptHubModal.style.display === 'flex') {
+                scriptHubModal.style.display = 'none';
+                scriptHubButton.textContent = 'Open ScriptHub';
+            } else {
+                scriptHubModal.style.display = 'flex';
+                scriptHubButton.textContent = 'Close ScriptHub';
+            }
+        });
+
+        closeButton.addEventListener('click', () => {
+            scriptHubModal.style.display = 'none';
+            scriptHubButton.textContent = 'Open ScriptHub';
+        });
+
+        // ScriptHub JavaScript
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchForm = document.getElementById('search-form');
+            const resultsDiv = document.getElementById('results');
+            const loadMoreButton = document.getElementById('load-more');
+
+            let currentPage = 1;
+
+            async function fetchScripts(page = 1) {
+                const searchInput = document.getElementById('search-input').value;
+                const modeSelect = document.getElementById('mode-select').value;
+
+                try {
+                    const response = await fetch(`https://scriptblox-api-proxy.vercel.app/api/search?q=${encodeURIComponent(searchInput)}&mode=${encodeURIComponent(modeSelect)}&page=${page}`);
+                    const data = await response.json();
+
+                    if (page === 1) {
+                        resultsDiv.innerHTML = '';
+                    }
+
+                    if (data?.result?.scripts?.length) {
+                        data.result.scripts.forEach(script => {
+                            const scriptDiv = createScriptCard(script);
+                            resultsDiv.appendChild(scriptDiv);
+                        });
+
+                        currentPage = page;
+                        loadMoreButton.style.display = currentPage < data.result.totalPages ? 'block' : 'none';
+                    } else {
+                        resultsDiv.innerHTML = '<p>No scripts found.</p>';
+                        loadMoreButton.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error fetching scripts:', error);
+                    resultsDiv.innerHTML = '<p>An error occurred while fetching scripts.</p>';
+                    loadMoreButton.style.display = 'none';
+                }
+            }
+
+            function createScriptCard(script) {
+                const scriptDiv = document.createElement('div');
+                scriptDiv.classList.add('script-card');
+
+                const imageSrc = script.game.imageUrl ? `https://scriptblox.com${script.game.imageUrl}` : './404.jpg';
+                const keyLink = script.key ? `<a href="${script.keyLink}" target="_blank" rel="noopener noreferrer">Get Key</a>` : 'No';
+
+                scriptDiv.innerHTML = `
+                    <h3 class="script-title"><a href="https://scriptblox-api-proxy.vercel.app/script/${script.slug}" target="_blank" rel="noopener noreferrer">${script.title}</a></h3>
+                    <img src="${imageSrc}" alt="Game Image" onerror="this.src='https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTFV_3fgSgibO5UnL_ydawji9oIAUr6NblpEw&s';" />
+                    <div class="script-details">
+                        <p>Game: ${script.game.name}</p>
+                    </div>
+                    <div class="script-text-container">
+                        <button class="load-to-editor-button">Load to Editor</button>
+                    </div>
+                `;
+
+                const loadToEditorButton = scriptDiv.querySelector('.load-to-editor-button');
+                loadToEditorButton.addEventListener('click', () => {
+                    setEditorValue(script.script);
+                    scriptHubModal.style.display = 'none';
+                    scriptHubButton.textContent = 'Open ScriptHub';
+                });
+
+                return scriptDiv;
+            }
+
+            searchForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                fetchScripts(1);
+            });
+
+            loadMoreButton.addEventListener('click', () => {
+                fetchScripts(currentPage + 1);
+            });
+
+            fetchScripts(1);
+        });
+    </script>
+</body>
+</html>

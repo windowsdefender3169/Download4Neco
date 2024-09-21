@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://rawscripts.net/raw/Blox-Fruits-Relz-Hub-18609"))()

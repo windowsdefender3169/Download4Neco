@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monaco Editor</title>
+    <!-- Monaco Editor core files from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #editor {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="editor"></div>
+
+    <script>
+        // Load the Monaco Editor with its dependencies
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }});
+        require(['vs/editor/editor.main'], function () {
+            // Define a custom theme with specific colors
+            monaco.editor.defineTheme('my-dark-theme', {
+                base: 'vs-dark', 
+                inherit: true,   
+                rules: [
+                    { token: 'local', foreground: '#84D6F7' },
+                    { token: 'string', foreground: '#A6E78F' },
+                    { token: 'number', foreground: '#FCC600' },
+                    { token: 'comment', foreground: '#A6E78F' },
+                    { token: 'keyword', foreground: '#D1606C' },
+                ],
+                colors: {
+                    'editor.background': '#121212',
+                    'editor.foreground': '#FFFFFF',
+                    'editor.lineHighlightBackground': '#333333',
+                    'editorCursor.foreground': '#FFFFFF'
+                }
+            });
+
+            // Register the Lua language with tokenizer rules
+            monaco.languages.register({ id: 'lua' });
+            monaco.languages.setMonarchTokensProvider('lua', {
+                tokenizer: {
+                    root: [
+						[/\bprint\b/, 'keyword'],
+                        [/\blocal\b/, 'local'],
+                        [/"[^"]*"/, 'string'],
+                        [/'[^']*'/, 'string'],
+                        [/\b\d+(\.\d+)?\b/, 'number'],
+                        [/\b(?:if|then|else|end|for|while|function|return|break)\b/, 'keyword'],
+                        [/\-\-.*/, 'comment'],
+                    ],
+                }
+            });
+
+            // Create the editor instance
+            window.editor = monaco.editor.create(document.getElementById('editor'), {
+                value: 'print("Hello Neco-Ware V2!")',
+                language: 'lua',
+                theme: 'my-dark-theme',
+                minimap: { enabled: true }
+            });
+        });
+
+        // Function to get the value from the editor
+        function getEditorValue() {
+            return editor.getValue();
+        }
+
+        // Function to set the value in the editor
+        function setEditorValue(value) {
+            editor.setValue(value);
+        }
+		
+		function minimap(bool) {
+    editor.updateOptions({
+        minimap: {
+            enabled: bool
+        }
+    });
+    console.log("Minimap is now", bool ? "enabled" : "disabled");
+}
+
+    </script>
+</body>
+</html>
